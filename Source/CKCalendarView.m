@@ -20,27 +20,33 @@
 #import <QuartzCore/QuartzCore.h>
 #import "CKCalendarView.h"
 
-#define BUTTON_MARGIN 4
-#define CALENDAR_MARGIN 5
+#define BUTTON_MARGIN 0
+#define CALENDAR_MARGIN 1
 #define TOP_HEIGHT 44
-#define DAYS_HEADER_HEIGHT 22
-#define DEFAULT_CELL_WIDTH 43
-#define CELL_BORDER_WIDTH 1
+#define DAYS_HEADER_HEIGHT 43
+#define DEFAULT_CELL_WIDTH 40
+#define CELL_BORDER_WIDTH 0
 
 #define UIColorFromRGB(rgbValue) [UIColor colorWithRed:((float)((rgbValue & 0xFF0000) >> 16))/255.0 green:((float)((rgbValue & 0xFF00) >> 8))/255.0 blue:((float)(rgbValue & 0xFF))/255.0 alpha:1.0]
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
+#define CKLabelAlignmentCenter NSTextAlignmentCenter
+#else
+#define CKLabelAlignmentCenter UITextAlignmentCenter
+#endif
 
 
 @class CALayer;
 @class CAGradientLayer;
 
-@interface GradientView : UIView
+@interface CKGradientView : UIView
 
 @property(nonatomic, strong, readonly) CAGradientLayer *gradientLayer;
 - (void)setColors:(NSArray *)colors;
 
 @end
 
-@implementation GradientView
+@implementation CKGradientView
 
 - (id)init {
     return [self initWithFrame:CGRectZero];
@@ -77,8 +83,12 @@
 
 - (void)setDate:(NSDate *)date {
     _date = date;
-    NSDateComponents *comps = [self.calendar components:NSDayCalendarUnit|NSMonthCalendarUnit fromDate:date];
-    [self setTitle:[NSString stringWithFormat:@"%d", comps.day] forState:UIControlStateNormal];
+    if (!date) {
+        [self setTitle:@"" forState:UIControlStateNormal];
+    } else {
+        NSDateComponents *comps = [self.calendar components:NSDayCalendarUnit|NSMonthCalendarUnit fromDate:date];
+        [self setTitle:[NSString stringWithFormat:@"%d", comps.day] forState:UIControlStateNormal];
+    }
 }
 
 @end
@@ -88,10 +98,10 @@
 - (id)init {
     self = [super init];
     if (self) {
-        self.backgroundColor = UIColorFromRGB(0xF2F2F2);
-        self.selectedBackgroundColor = UIColorFromRGB(0x88B6DB);
-        self.textColor = UIColorFromRGB(0x393B40);
-        self.selectedTextColor = UIColorFromRGB(0xF2F2F2);
+        self.backgroundColor = [UIColor clearColor];
+        self.selectedBackgroundColor = UIColorFromRGB(0x3ab3d2);
+        self.textColor = UIColorFromRGB(0x3fc4e5);
+        self.selectedTextColor = [UIColor whiteColor];
     }
     return self;
 }
@@ -105,7 +115,7 @@
 @property(nonatomic, strong) UIButton *prevButton;
 @property(nonatomic, strong) UIButton *nextButton;
 @property(nonatomic, strong) UIView *calendarContainer;
-@property(nonatomic, strong) GradientView *daysHeader;
+@property(nonatomic, strong) CKGradientView *daysHeader;
 @property(nonatomic, strong) NSArray *dayOfWeekLabels;
 @property(nonatomic, strong) NSMutableArray *dateButtons;
 @property(nonatomic, strong) NSDateFormatter *dateFormatter;
@@ -132,6 +142,7 @@
 - (void)_init:(CKCalendarStartDay)firstDay {
     self.calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
     [self.calendar setLocale:[NSLocale currentLocale]];
+    [self.calendar setTimeZone:[NSTimeZone timeZoneWithAbbreviation:@"UTC"]];
 
     self.cellWidth = DEFAULT_CELL_WIDTH;
 
@@ -143,17 +154,16 @@
     self.onlyShowCurrentMonth = YES;
     self.adaptHeightToNumberOfWeeksInMonth = YES;
 
-    self.layer.cornerRadius = 6.0f;
+    self.layer.cornerRadius = 0.0f;
 
-    UIView *highlight = [[UIView alloc] initWithFrame:CGRectZero];
-    highlight.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.2];
-    highlight.layer.cornerRadius = 6.0f;
+    CKGradientView *highlight = [[CKGradientView alloc] initWithFrame:CGRectZero];
+    [highlight setColors:[NSArray arrayWithObjects:UIColorFromRGB(0x3fc4e5), UIColorFromRGB(0x2aabd0), nil]];
     [self addSubview:highlight];
     self.highlight = highlight;
 
     // SET UP THE HEADER
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.textAlignment = CKLabelAlignmentCenter;
     titleLabel.backgroundColor = [UIColor clearColor];
     titleLabel.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleWidth;
     [self addSubview:titleLabel];
@@ -161,29 +171,28 @@
 
     UIButton *prevButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [prevButton setImage:[UIImage imageNamed:@"left_arrow.png"] forState:UIControlStateNormal];
-    prevButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin;
+//    prevButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin;
     [prevButton addTarget:self action:@selector(_moveCalendarToPreviousMonth) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:prevButton];
     self.prevButton = prevButton;
 
     UIButton *nextButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [nextButton setImage:[UIImage imageNamed:@"right_arrow.png"] forState:UIControlStateNormal];
-    nextButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin;
+//    nextButton.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleLeftMargin;
     [nextButton addTarget:self action:@selector(_moveCalendarToNextMonth) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:nextButton];
     self.nextButton = nextButton;
 
     // THE CALENDAR ITSELF
-    UIView *calendarContainer = [[UIView alloc] initWithFrame:CGRectZero];
-    calendarContainer.layer.borderWidth = 1.0f;
-    calendarContainer.layer.borderColor = [UIColor blackColor].CGColor;
+    CKGradientView *calendarContainer = [[CKGradientView alloc] initWithFrame:CGRectZero];
+    [calendarContainer setColors:[NSArray arrayWithObjects:UIColorFromRGB(0xffffff), UIColorFromRGB(0xf5f5f5), nil]];
     calendarContainer.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
-    calendarContainer.layer.cornerRadius = 4.0f;
+    calendarContainer.layer.cornerRadius = 0.0f;
     calendarContainer.clipsToBounds = YES;
     [self addSubview:calendarContainer];
     self.calendarContainer = calendarContainer;
 
-    GradientView *daysHeader = [[GradientView alloc] initWithFrame:CGRectZero];
+    CKGradientView *daysHeader = [[CKGradientView alloc] initWithFrame:CGRectZero];
     daysHeader.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleWidth;
     [self.calendarContainer addSubview:daysHeader];
     self.daysHeader = daysHeader;
@@ -191,10 +200,10 @@
     NSMutableArray *labels = [NSMutableArray array];
     for (int i = 0; i < 7; ++i) {
         UILabel *dayOfWeekLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-        dayOfWeekLabel.textAlignment = NSTextAlignmentCenter;
+        dayOfWeekLabel.textAlignment = CKLabelAlignmentCenter;
         dayOfWeekLabel.backgroundColor = [UIColor clearColor];
-        dayOfWeekLabel.shadowColor = [UIColor whiteColor];
-        dayOfWeekLabel.shadowOffset = CGSizeMake(0, 1);
+//        dayOfWeekLabel.shadowColor = [UIColor whiteColor];
+//        dayOfWeekLabel.shadowOffset = CGSizeMake(0, 1);
         [labels addObject:dayOfWeekLabel];
         [self.calendarContainer addSubview:dayOfWeekLabel];
     }
@@ -254,12 +263,12 @@
     newFrame.size.height = containerHeight + CALENDAR_MARGIN + TOP_HEIGHT;
     self.frame = newFrame;
 
-    self.highlight.frame = CGRectMake(1, 1, self.bounds.size.width - 2, 1);
+    self.highlight.frame = CGRectMake(0, 0, self.bounds.size.width, TOP_HEIGHT);
 
     self.titleLabel.text = [self.dateFormatter stringFromDate:_monthShowing];
     self.titleLabel.frame = CGRectMake(0, 0, self.bounds.size.width, TOP_HEIGHT);
-    self.prevButton.frame = CGRectMake(BUTTON_MARGIN, BUTTON_MARGIN, 48, 38);
-    self.nextButton.frame = CGRectMake(self.bounds.size.width - 48 - BUTTON_MARGIN, BUTTON_MARGIN, 48, 38);
+    self.prevButton.frame = CGRectMake(BUTTON_MARGIN, BUTTON_MARGIN, 44, 44);
+    self.nextButton.frame = CGRectMake(self.bounds.size.width - 44 - BUTTON_MARGIN, BUTTON_MARGIN, 44, 44);
 
     self.calendarContainer.frame = CGRectMake(CALENDAR_MARGIN, CGRectGetMaxY(self.titleLabel.frame), containerWidth, containerHeight);
     self.daysHeader.frame = CGRectMake(0, 0, self.calendarContainer.frame.size.width, DAYS_HEADER_HEIGHT);
@@ -295,11 +304,11 @@
 
         dateButton.date = date;
         CKDateItem *item = [[CKDateItem alloc] init];
-        if ([self _dateIsToday:dateButton.date]) {
+        /*if ([self _dateIsToday:dateButton.date]) {
             item.textColor = UIColorFromRGB(0xF2F2F2);
             item.backgroundColor = [UIColor lightGrayColor];
-        } else if (!self.onlyShowCurrentMonth && [self _compareByMonth:date toDate:self.monthShowing] != NSOrderedSame) {
-            item.textColor = [UIColor lightGrayColor];
+        } else */if (!self.onlyShowCurrentMonth && [self _compareByMonth:date toDate:self.monthShowing] != NSOrderedSame) {
+            item.textColor = UIColorFromRGB(0x999999);
         }
 
         if (self.delegate && [self.delegate respondsToSelector:@selector(calendar:configureDateItem:forDate:)]) {
@@ -328,7 +337,7 @@
 }
 
 - (void)_updateDayOfWeekLabels {
-    NSArray *weekdays = [self.dateFormatter shortWeekdaySymbols];
+    NSArray *weekdays = [self.dateFormatter veryShortWeekdaySymbols];
     // adjust array depending on which weekday should be first
     NSUInteger firstWeekdayIndex = [self.calendar firstWeekday] - 1;
     if (firstWeekdayIndex > 0) {
@@ -422,7 +431,7 @@
     [self setDayOfWeekBottomColor:UIColorFromRGB(0xCCCFD5) topColor:[UIColor whiteColor]];
 
     [self setDateFont:[UIFont boldSystemFontOfSize:16.0f]];
-    [self setDateBorderColor:UIColorFromRGB(0xDAE1E6)];
+    [self setDateBorderColor:[UIColor clearColor]];
 }
 
 - (CGRect)_calculateDayCellFrame:(NSDate *)date {
