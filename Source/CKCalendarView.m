@@ -185,7 +185,7 @@
 
     // THE CALENDAR ITSELF
     CKGradientView *calendarContainer = [[CKGradientView alloc] initWithFrame:CGRectZero];
-    [calendarContainer setColors:[NSArray arrayWithObjects:UIColorFromRGB(0xffffff), UIColorFromRGB(0xf5f5f5), nil]];
+    [calendarContainer setColors:[NSArray arrayWithObjects:UIColorFromRGB(0xffffff), UIColorFromRGB(0xffffff), nil]];
     calendarContainer.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
     calendarContainer.layer.cornerRadius = 0.0f;
     calendarContainer.clipsToBounds = YES;
